@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>달리기 대회</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #87CEEB; font-family: 'Arial', sans-serif; }
+canvas { display: block; }
+
+#ui {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#scoreboard {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.rank-card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 14px;
+  padding: 8px 16px;
+  min-width: 90px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid transparent;
+  transition: transform 0.3s, border-color 0.3s;
+}
+
+.rank-card.first {
+  transform: scale(1.08);
+  border-color: #FFD700;
+}
+
+.rank-card .name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.rank-card .position {
+  font-size: 11px;
+  color: #888;
+}
+
+#start-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #a8e063 0%, #56ab2f 50%, #87CEEB 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#start-screen h1 {
+  color: #fff;
+  font-size: 52px;
+  text-shadow: 3px 3px 0 #56ab2f, 0 0 30px rgba(255,255,255,0.3);
+  margin-bottom: 12px;
+}
+
+#start-screen .chars {
+  display: flex;
+  gap: 24px;
+  margin: 24px 0 36px;
+}
+
+.char-preview {
+  text-align: center;
+  background: rgba(255,255,255,0.3);
+  border-radius: 16px;
+  padding: 16px 20px;
+  backdrop-filter: blur(5px);
+}
+
+.char-preview .dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 0 auto 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.char-preview .cname {
+  color: #fff;
+  font-weight: bold;
+  font-size: 18px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.char-preview .gender {
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+}
+
+#start-btn {
+  background: #fff;
+  border: none;
+  padding: 16px 48px;
+  font-size: 22px;
+  font-weight: bold;
+  border-radius: 50px;
+  cursor: pointer;
+  color: #56ab2f;
+  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+  pointer-events: auto;
+}
+
+#start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+
+#start-btn:active {
+  transform: scale(0.97);
+}
+
+#lap-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 16px;
+  background: rgba(0,0,0,0.3);
+  padding: 8px 20px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+}
+
+#camera-hint {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  opacity: 1;
+  transition: opacity 2s;
+}
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h1>🏃 달리기 대회 🏃‍♀️</h1>
+  <div class="chars">
+    <div class="char-preview">
+      <div class="dot" style="background: #FF69B4;"></div>
+      <div class="cname">나나</div>
+      <div class="gender">♀</div>
+    </div>
+    <div class="char-preview">
+      <div class="dot" style="background: #FFD700;"></div>
+      <div class="cname">조아</div>
+      <div class="gender">♀</div>
+    </div>
+    <div class="char-preview">
+      <div class="dot" style="background: #FF6347;"></div>
+      <div class="cname">라라</div>
+      <div class="gender">♀</div>
+    </div>
+    <div class="char-preview">
+      <div class="dot" style="background: #4FC3F7;"></div>
+      <div class="cname">로로</div>
+      <div class="gender">♂</div>
+    </div>
+  </div>
+  <button id="start-btn">START!</button>
+</div>
+
+<div id="ui">
+  <div id="scoreboard">
+    <div class="rank-card" id="rank-0">
+      <div class="name">-</div>
+      <div class="position">-</div>
+    </div>
+    <div class="rank-card" id="rank-1">
+      <div class="name">-</div>
+      <div class="position">-</div>
+    </div>
+    <div class="rank-card" id="rank-2">
+      <div class="name">-</div>
+      <div class="position">-</div>
+    </div>
+    <div class="rank-card" id="rank-3">
+      <div class="name">-</div>
+      <div class="position">-</div>
+    </div>
+  </div>
+  <div id="lap-counter"></div>
+  <div id="camera-hint">마우스 드래그로 카메라 회전 | 스크롤로 줌</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── Character Data ───
+const CHARACTERS = [
+  { name: '나나', color: 0xFF69B4, skinColor: 0xFFDBC4, gender: 'F', hairColor: 0x2a1a0a },
+  { name: '조아', color: 0xFFD700, skinColor: 0xF5D0A9, gender: 'F', hairColor: 0x5c3317 },
+  { name: '라라', color: 0xFF6347, skinColor: 0xFFE0BD, gender: 'F', hairColor: 0x1a1a2e },
+  { name: '로로', color: 0x4FC3F7, skinColor: 0xE8C39E, gender: 'M', hairColor: 0x1a1a1a },
+];
+
+// ─── Track Config ───
+const TRACK_RADIUS = 40;
+const TRACK_WIDTH = 10;
+const LANE_COUNT = 4;
+const LANE_WIDTH = TRACK_WIDTH / LANE_COUNT;
+
+// ─── State ───
+let running = false;
+let time = 0;
+let runners = [];
+let cameraAngle = 0;
+let cameraPitch = 0.4;
+let cameraDist = 35;
+let isDragging = false;
+let lastMouse = { x: 0, y: 0 };
+
+// ─── Three.js Setup ───
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 150, 400);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// ─── Lighting ───
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xFFF8E1, 1.2);
+sunLight.position.set(60, 80, 40);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.left = -80;
+sunLight.shadow.camera.right = 80;
+sunLight.shadow.camera.top = 80;
+sunLight.shadow.camera.bottom = -80;
+scene.add(sunLight);
+
+const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x56ab2f, 0.4);
+scene.add(hemiLight);
+
+// ─── Sun ───
+const sunGeo = new THREE.SphereGeometry(8, 16, 16);
+const sunMat = new THREE.MeshBasicMaterial({ color: 0xFFFF44 });
+const sun = new THREE.Mesh(sunGeo, sunMat);
+sun.position.set(100, 120, -80);
+scene.add(sun);
+
+// Sun rays
+const rayMat = new THREE.MeshBasicMaterial({ color: 0xFFFF88, transparent: true, opacity: 0.3 });
+for (let i = 0; i < 8; i++) {
+  const ray = new THREE.Mesh(new THREE.BoxGeometry(1, 14, 1), rayMat);
+  ray.position.copy(sun.position);
+  ray.rotation.z = (i / 8) * Math.PI;
+  scene.add(ray);
+}
+
+// ─── Ground (Teletubbies rolling hills) ───
+const groundSize = 300;
+const groundSeg = 80;
+const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, groundSeg, groundSeg);
+groundGeo.rotateX(-Math.PI / 2);
+
+const posAttr = groundGeo.attributes.position;
+for (let i = 0; i < posAttr.count; i++) {
+  const x = posAttr.getX(i);
+  const z = posAttr.getZ(i);
+  const distFromCenter = Math.sqrt(x * x + z * z);
+
+  // Keep track area flat
+  if (distFromCenter < TRACK_RADIUS + TRACK_WIDTH + 3) {
+    posAttr.setY(i, 0);
+  } else {
+    // Rolling hills
+    const h =
+      Math.sin(x * 0.04) * 4 +
+      Math.cos(z * 0.05) * 3 +
+      Math.sin(x * 0.02 + z * 0.03) * 6 +
+      Math.cos(x * 0.06 - z * 0.04) * 2;
+    posAttr.setY(i, Math.max(0, h));
+  }
+}
+groundGeo.computeVertexNormals();
+
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x7CCD3B,
+  roughness: 0.9,
+  flatShading: false,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ─── Track ───
+const trackShape = new THREE.Shape();
+const outerR = TRACK_RADIUS + TRACK_WIDTH / 2;
+const innerR = TRACK_RADIUS - TRACK_WIDTH / 2;
+
+// Outer circle
+for (let i = 0; i <= 64; i++) {
+  const a = (i / 64) * Math.PI * 2;
+  const x = Math.cos(a) * outerR;
+  const y = Math.sin(a) * outerR;
+  if (i === 0) trackShape.moveTo(x, y);
+  else trackShape.lineTo(x, y);
+}
+
+// Inner circle (hole)
+const holePath = new THREE.Path();
+for (let i = 0; i <= 64; i++) {
+  const a = (i / 64) * Math.PI * 2;
+  const x = Math.cos(a) * innerR;
+  const y = Math.sin(a) * innerR;
+  if (i === 0) holePath.moveTo(x, y);
+  else holePath.lineTo(x, y);
+}
+trackShape.holes.push(holePath);
+
+const trackGeo = new THREE.ShapeGeometry(trackShape);
+trackGeo.rotateX(-Math.PI / 2);
+const trackMat = new THREE.MeshStandardMaterial({
+  color: 0xD2691E,
+  roughness: 0.95,
+});
+const track = new THREE.Mesh(trackGeo, trackMat);
+track.position.y = 0.05;
+track.receiveShadow = true;
+scene.add(track);
+
+// Lane lines
+for (let lane = 0; lane <= LANE_COUNT; lane++) {
+  const r = innerR + lane * LANE_WIDTH;
+  const points = [];
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    points.push(new THREE.Vector3(Math.cos(a) * r, 0.08, Math.sin(a) * r));
+  }
+  const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+  const lineMat = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: lane === 0 || lane === LANE_COUNT ? 0.8 : 0.4,
+  });
+  scene.add(new THREE.Line(lineGeo, lineMat));
+}
+
+// ─── Flowers ───
+function createFlower(x, z, color) {
+  const group = new THREE.Group();
+  // Stem
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.6, 4),
+    new THREE.MeshStandardMaterial({ color: 0x2d8a2d })
+  );
+  stem.position.y = 0.3;
+  group.add(stem);
+
+  // Petals
+  for (let i = 0; i < 5; i++) {
+    const petal = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 6, 6),
+      new THREE.MeshStandardMaterial({ color })
+    );
+    const a = (i / 5) * Math.PI * 2;
+    petal.position.set(Math.cos(a) * 0.15, 0.65, Math.sin(a) * 0.15);
+    petal.scale.y = 0.6;
+    group.add(petal);
+  }
+  // Center
+  const center = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0xFFFF00 })
+  );
+  center.position.y = 0.65;
+  group.add(center);
+
+  group.position.set(x, 0, z);
+  group.scale.setScalar(0.8 + Math.random() * 0.6);
+  return group;
+}
+
+const flowerColors = [0xFF69B4, 0xFF6347, 0xFFD700, 0xFF00FF, 0xFF4500, 0xDA70D6];
+for (let i = 0; i < 200; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = outerR + 3 + Math.random() * 80;
+  const x = Math.cos(angle) * dist;
+  const z = Math.sin(angle) * dist;
+  const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+  const flower = createFlower(x, z, color);
+  scene.add(flower);
+}
+
+// Also some inside track
+for (let i = 0; i < 60; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = Math.random() * (innerR - 4);
+  const x = Math.cos(angle) * dist;
+  const z = Math.sin(angle) * dist;
+  const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+  const flower = createFlower(x, z, color);
+  scene.add(flower);
+}
+
+// ─── Teletubbies-style rabbit (simple) ───
+function createBunny(x, z) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.8 });
+
+  // Body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), mat);
+  body.position.y = 0.4;
+  body.scale.set(1, 0.8, 0.8);
+  group.add(body);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), mat);
+  head.position.set(0, 0.75, 0.15);
+  group.add(head);
+
+  // Ears
+  for (let side = -1; side <= 1; side += 2) {
+    const ear = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.06, 0.3, 4, 4),
+      mat
+    );
+    ear.position.set(side * 0.12, 1.1, 0.15);
+    ear.rotation.z = side * 0.2;
+    group.add(ear);
+  }
+
+  // Eyes
+  for (let side = -1; side <= 1; side += 2) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0x111111 })
+    );
+    eye.position.set(side * 0.1, 0.8, 0.35);
+    group.add(eye);
+  }
+
+  // Tail
+  const tail = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), mat);
+  tail.position.set(0, 0.4, -0.35);
+  group.add(tail);
+
+  group.position.set(x, 0, z);
+  group.userData.baseX = x;
+  group.userData.baseZ = z;
+  group.userData.hopPhase = Math.random() * Math.PI * 2;
+  return group;
+}
+
+const bunnies = [];
+for (let i = 0; i < 10; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = innerR * Math.random() * 0.7;
+  const bunny = createBunny(Math.cos(angle) * dist, Math.sin(angle) * dist);
+  scene.add(bunny);
+  bunnies.push(bunny);
+}
+
+// ─── Trees (simple round) ───
+function createTree(x, z, size) {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(size * 0.15, size * 0.2, size * 1.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+  );
+  trunk.position.y = size * 0.75;
+  trunk.castShadow = true;
+  group.add(trunk);
+
+  const leaves = new THREE.Mesh(
+    new THREE.SphereGeometry(size * 0.8, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x2ECC40, roughness: 0.8 })
+  );
+  leaves.position.y = size * 1.8;
+  leaves.castShadow = true;
+  group.add(leaves);
+
+  group.position.set(x, 0, z);
+  return group;
+}
+
+for (let i = 0; i < 25; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = outerR + 10 + Math.random() * 70;
+  const size = 1.5 + Math.random() * 2;
+  scene.add(createTree(Math.cos(angle) * dist, Math.sin(angle) * dist, size));
+}
+
+// ─── Butterflies ───
+const butterflies = [];
+function createButterfly() {
+  const group = new THREE.Group();
+  const colors = [0xFF69B4, 0xFFD700, 0x87CEEB, 0xFF6347, 0xDA70D6];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const wingMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+
+  for (let side = -1; side <= 1; side += 2) {
+    const wing = new THREE.Mesh(new THREE.CircleGeometry(0.3, 6), wingMat);
+    wing.position.x = side * 0.15;
+    wing.rotation.y = side * 0.5;
+    wing.userData.side = side;
+    group.add(wing);
+  }
+
+  const bodyMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.2, 3, 3), bodyMat);
+  body.rotation.x = Math.PI / 2;
+  group.add(body);
+
+  const angle = Math.random() * Math.PI * 2;
+  const dist = Math.random() * 80;
+  group.position.set(Math.cos(angle) * dist, 2 + Math.random() * 4, Math.sin(angle) * dist);
+  group.userData.phase = Math.random() * Math.PI * 2;
+  group.userData.centerX = group.position.x;
+  group.userData.centerZ = group.position.z;
+  group.userData.radius = 2 + Math.random() * 5;
+  return group;
+}
+
+for (let i = 0; i < 15; i++) {
+  const b = createButterfly();
+  scene.add(b);
+  butterflies.push(b);
+}
+
+// ─── Rainbow ───
+const rainbowColors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3];
+rainbowColors.forEach((color, i) => {
+  const radius = 60 + i * 1.5;
+  const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, Math.PI, false, 0);
+  const points = curve.getPoints(50);
+  const points3D = points.map(p => new THREE.Vector3(p.x, p.y, -100));
+  const geo = new THREE.BufferGeometry().setFromPoints(points3D);
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3, linewidth: 2 });
+  const line = new THREE.Line(geo, mat);
+  line.rotation.x = 0;
+  scene.add(line);
+});
+
+// ─── Create Character ───
+function createCharacter(data, laneIndex) {
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshStandardMaterial({ color: data.skinColor, roughness: 0.7 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.6 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: data.hairColor, roughness: 0.8 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+
+  // ── Body parts with pivot groups for animation ──
+
+  // Torso
+  const torso = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.35, 0.6, 6, 8),
+    clothMat
+  );
+  torso.position.y = 1.3;
+  torso.castShadow = true;
+  group.add(torso);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 10), skinMat);
+  head.position.y = 2.0;
+  head.castShadow = true;
+  group.add(head);
+
+  // Hair
+  if (data.gender === 'F') {
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.6),
+      hairMat
+    );
+    hair.position.y = 2.05;
+    group.add(hair);
+
+    // Ponytail
+    const ponytail = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.08, 0.3, 4, 4),
+      hairMat
+    );
+    ponytail.position.set(0, 2.0, -0.25);
+    ponytail.rotation.x = 0.5;
+    group.add(ponytail);
+  } else {
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.31, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
+      hairMat
+    );
+    hair.position.y = 2.05;
+    group.add(hair);
+  }
+
+  // Eyes
+  for (let side = -1; side <= 1; side += 2) {
+    const eyeWhite = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffffff })
+    );
+    eyeWhite.position.set(side * 0.12, 2.04, 0.24);
+    group.add(eyeWhite);
+
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0x111111 })
+    );
+    pupil.position.set(side * 0.12, 2.04, 0.28);
+    group.add(pupil);
+  }
+
+  // Smile
+  const smileCurve = new THREE.EllipseCurve(0, 0, 0.08, 0.04, Math.PI * 0.1, Math.PI * 0.9, false);
+  const smilePoints = smileCurve.getPoints(10);
+  const smileGeo = new THREE.BufferGeometry().setFromPoints(smilePoints.map(p => new THREE.Vector3(p.x, p.y, 0)));
+  const smile = new THREE.Line(smileGeo, new THREE.LineBasicMaterial({ color: 0x333333 }));
+  smile.position.set(0, 1.9, 0.29);
+  group.add(smile);
+
+  // Cheeks (blush)
+  for (let side = -1; side <= 1; side += 2) {
+    const cheek = new THREE.Mesh(
+      new THREE.CircleGeometry(0.05, 8),
+      new THREE.MeshBasicMaterial({ color: 0xFFAAAA, transparent: true, opacity: 0.4 })
+    );
+    cheek.position.set(side * 0.2, 1.95, 0.27);
+    group.add(cheek);
+  }
+
+  // Arms (pivot at shoulder)
+  const leftArmPivot = new THREE.Group();
+  leftArmPivot.position.set(-0.4, 1.55, 0);
+  const leftArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.45, 4, 6), skinMat);
+  leftArm.position.y = -0.28;
+  leftArm.castShadow = true;
+  leftArmPivot.add(leftArm);
+  group.add(leftArmPivot);
+
+  const rightArmPivot = new THREE.Group();
+  rightArmPivot.position.set(0.4, 1.55, 0);
+  const rightArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.45, 4, 6), skinMat);
+  rightArm.position.y = -0.28;
+  rightArm.castShadow = true;
+  rightArmPivot.add(rightArm);
+  group.add(rightArmPivot);
+
+  // Legs (pivot at hip)
+  const leftLegPivot = new THREE.Group();
+  leftLegPivot.position.set(-0.15, 0.95, 0);
+  const leftLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.45, 4, 6), clothMat);
+  leftLeg.position.y = -0.3;
+  leftLeg.castShadow = true;
+  leftLegPivot.add(leftLeg);
+  // Shoe
+  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.25), shoeMat);
+  leftShoe.position.set(0, -0.58, 0.05);
+  leftLegPivot.add(leftShoe);
+  group.add(leftLegPivot);
+
+  const rightLegPivot = new THREE.Group();
+  rightLegPivot.position.set(0.15, 0.95, 0);
+  const rightLeg = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.45, 4, 6), clothMat);
+  rightLeg.position.y = -0.3;
+  rightLeg.castShadow = true;
+  rightLegPivot.add(rightLeg);
+  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.25), shoeMat);
+  rightShoe.position.set(0, -0.58, 0.05);
+  rightLegPivot.add(rightShoe);
+  group.add(rightLegPivot);
+
+  // Name tag
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 48;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(4, 4, 120, 40, 12);
+  ctx.fill();
+  ctx.fillStyle = '#' + data.color.toString(16).padStart(6, '0');
+  ctx.font = 'bold 24px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(data.name, 64, 32);
+
+  const nameTexture = new THREE.CanvasTexture(canvas);
+  const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTexture, transparent: true }));
+  nameSprite.position.y = 2.6;
+  nameSprite.scale.set(1.2, 0.45, 1);
+  group.add(nameSprite);
+
+  scene.add(group);
+
+  // Runner state
+  const laneR = innerR + (laneIndex + 0.5) * LANE_WIDTH;
+  return {
+    group,
+    data,
+    leftArmPivot,
+    rightArmPivot,
+    leftLegPivot,
+    rightLegPivot,
+    torso,
+    head,
+    angle: 0,           // position on track (radians)
+    laneRadius: laneR,
+    speed: 0,
+    targetSpeed: 0,
+    baseSpeed: 1.8 + Math.random() * 0.1,  // very similar speeds
+    phase: Math.random() * Math.PI * 2,
+    laps: 0,
+    totalAngle: 0,
+    animPhase: Math.random() * Math.PI * 2,
+    // Speed variation parameters (for neck-and-neck effect)
+    variationFreq1: 0.3 + Math.random() * 0.4,
+    variationFreq2: 0.7 + Math.random() * 0.5,
+    variationFreq3: 0.1 + Math.random() * 0.2,
+    variationAmp1: 0.08 + Math.random() * 0.06,
+    variationAmp2: 0.04 + Math.random() * 0.04,
+    variationAmp3: 0.12 + Math.random() * 0.06,
+    variationOffset1: Math.random() * Math.PI * 2,
+    variationOffset2: Math.random() * Math.PI * 2,
+    variationOffset3: Math.random() * Math.PI * 2,
+  };
+}
+
+// ─── Initialize Runners ───
+for (let i = 0; i < CHARACTERS.length; i++) {
+  runners.push(createCharacter(CHARACTERS[i], i));
+}
+
+// ─── Camera Controls ───
+renderer.domElement.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  lastMouse.x = e.clientX;
+  lastMouse.y = e.clientY;
+});
+
+renderer.domElement.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - lastMouse.x;
+  const dy = e.clientY - lastMouse.y;
+  cameraAngle -= dx * 0.005;
+  cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch + dy * 0.005));
+  lastMouse.x = e.clientX;
+  lastMouse.y = e.clientY;
+});
+
+renderer.domElement.addEventListener('mouseup', () => { isDragging = false; });
+renderer.domElement.addEventListener('mouseleave', () => { isDragging = false; });
+
+renderer.domElement.addEventListener('wheel', (e) => {
+  cameraDist = Math.max(15, Math.min(80, cameraDist + e.deltaY * 0.05));
+});
+
+// Touch controls
+renderer.domElement.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    lastMouse.x = e.touches[0].clientX;
+    lastMouse.y = e.touches[0].clientY;
+  }
+});
+
+renderer.domElement.addEventListener('touchmove', (e) => {
+  if (!isDragging || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - lastMouse.x;
+  const dy = e.touches[0].clientY - lastMouse.y;
+  cameraAngle -= dx * 0.005;
+  cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch + dy * 0.005));
+  lastMouse.x = e.touches[0].clientX;
+  lastMouse.y = e.touches[0].clientY;
+  e.preventDefault();
+}, { passive: false });
+
+renderer.domElement.addEventListener('touchend', () => { isDragging = false; });
+
+// ─── Start ───
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('scoreboard').style.opacity = '1';
+  running = true;
+  setTimeout(() => {
+    document.getElementById('camera-hint').style.opacity = '0';
+  }, 4000);
+});
+
+// ─── Resize ───
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── UI Update ───
+function updateUI() {
+  // Sort by total progress
+  const sorted = [...runners].sort((a, b) => b.totalAngle - a.totalAngle);
+  const rankLabels = ['1위 🥇', '2위 🥈', '3위 🥉', '4위'];
+
+  sorted.forEach((runner, idx) => {
+    const card = document.getElementById(`rank-${idx}`);
+    const nameEl = card.querySelector('.name');
+    const posEl = card.querySelector('.position');
+
+    nameEl.textContent = runner.data.name;
+    nameEl.style.color = '#' + runner.data.color.toString(16).padStart(6, '0');
+    posEl.textContent = rankLabels[idx];
+
+    card.classList.toggle('first', idx === 0);
+    card.style.borderColor = idx === 0 ? '#FFD700' : 'transparent';
+  });
+
+  // Lap counter (based on leader)
+  const leader = sorted[0];
+  document.getElementById('lap-counter').textContent =
+    `${leader.data.name} 선두 | 바퀴: ${leader.laps}`;
+}
+
+// ─── Animation Loop ───
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.05);
+  time += delta;
+
+  if (!running) {
+    // Idle: characters stand at starting position
+    runners.forEach((runner, i) => {
+      const a = (i / runners.length) * 0.1 - 0.05;
+      const x = Math.cos(a) * runner.laneRadius;
+      const z = Math.sin(a) * runner.laneRadius;
+      runner.group.position.set(x, 0, z);
+      runner.group.rotation.y = -a + Math.PI / 2;
+
+      // Idle breathing animation
+      runner.torso.scale.y = 1 + Math.sin(time * 2 + i) * 0.02;
+    });
+
+    // Idle camera
+    if (!isDragging) {
+      cameraAngle = time * 0.15;
+    }
+    const cx = Math.cos(cameraAngle) * cameraDist;
+    const cz = Math.sin(cameraAngle) * cameraDist;
+    const cy = cameraDist * cameraPitch;
+    camera.position.set(cx, cy, cz);
+    camera.lookAt(0, 1.5, 0);
+
+    renderer.render(scene, camera);
+    return;
+  }
+
+  // ─── Update Runners ───
+  runners.forEach((runner) => {
+    // Speed variation using multiple sine waves for organic feel
+    const v1 = Math.sin(time * runner.variationFreq1 + runner.variationOffset1) * runner.variationAmp1;
+    const v2 = Math.sin(time * runner.variationFreq2 + runner.variationOffset2) * runner.variationAmp2;
+    const v3 = Math.sin(time * runner.variationFreq3 + runner.variationOffset3) * runner.variationAmp3;
+
+    // Occasional small surge
+    const surge = Math.sin(time * 0.15 + runner.phase) > 0.85 ? 0.1 : 0;
+
+    runner.targetSpeed = runner.baseSpeed + v1 + v2 + v3 + surge;
+
+    // Rubber-banding: slow down if too far ahead, speed up if too far behind
+    const avgAngle = runners.reduce((s, r) => s + r.totalAngle, 0) / runners.length;
+    const diff = runner.totalAngle - avgAngle;
+    runner.targetSpeed -= diff * 0.15; // gentle pull towards pack
+
+    // Smooth speed transition
+    runner.speed += (runner.targetSpeed - runner.speed) * delta * 3;
+
+    // Angular speed (convert linear speed to angular, accounting for lane radius)
+    const angularSpeed = runner.speed / runner.laneRadius;
+    runner.angle += angularSpeed * delta;
+    runner.totalAngle += angularSpeed * delta;
+
+    // Lap counting
+    const newLaps = Math.floor(runner.totalAngle / (Math.PI * 2));
+    runner.laps = newLaps;
+
+    // Position on track
+    const x = Math.cos(runner.angle) * runner.laneRadius;
+    const z = Math.sin(runner.angle) * runner.laneRadius;
+    runner.group.position.set(x, 0, z);
+
+    // Face forward (tangent to circle)
+    runner.group.rotation.y = -runner.angle + Math.PI / 2;
+
+    // ─── Running Animation ───
+    const animSpeed = runner.speed * 3;
+    runner.animPhase += delta * animSpeed;
+    const p = runner.animPhase;
+
+    // Arms swing opposite to legs
+    runner.leftArmPivot.rotation.x = Math.sin(p) * 0.8;
+    runner.rightArmPivot.rotation.x = -Math.sin(p) * 0.8;
+
+    // Legs
+    runner.leftLegPivot.rotation.x = -Math.sin(p) * 0.7;
+    runner.rightLegPivot.rotation.x = Math.sin(p) * 0.7;
+
+    // Torso slight lean forward and bob
+    runner.torso.rotation.x = 0.1;
+    runner.torso.position.y = 1.3 + Math.abs(Math.sin(p * 2)) * 0.08;
+
+    // Head bob
+    runner.head.position.y = 2.0 + Math.abs(Math.sin(p * 2)) * 0.06;
+
+    // Slight body bounce
+    runner.group.position.y = Math.abs(Math.sin(p)) * 0.1;
+  });
+
+  // ─── Bunnies ───
+  bunnies.forEach(bunny => {
+    bunny.userData.hopPhase += delta * 2;
+    const hop = Math.abs(Math.sin(bunny.userData.hopPhase));
+    bunny.position.y = hop * 0.3;
+    bunny.position.x = bunny.userData.baseX + Math.sin(time * 0.5 + bunny.userData.hopPhase) * 0.5;
+    bunny.position.z = bunny.userData.baseZ + Math.cos(time * 0.3 + bunny.userData.hopPhase) * 0.5;
+
+    // Face a random direction occasionally
+    bunny.rotation.y = Math.sin(time * 0.2 + bunny.userData.hopPhase * 0.5) * Math.PI;
+  });
+
+  // ─── Butterflies ───
+  butterflies.forEach(b => {
+    b.userData.phase += delta * 2;
+    const p = b.userData.phase;
+    b.position.x = b.userData.centerX + Math.sin(p * 0.5) * b.userData.radius;
+    b.position.z = b.userData.centerZ + Math.cos(p * 0.7) * b.userData.radius;
+    b.position.y = 2 + Math.sin(p) * 1.5;
+
+    // Wing flap
+    b.children.forEach(child => {
+      if (child.userData.side) {
+        child.rotation.y = child.userData.side * (0.3 + Math.sin(p * 8) * 0.7);
+      }
+    });
+
+    b.rotation.y = Math.atan2(
+      Math.cos(p * 0.5) * b.userData.radius * 0.5,
+      -Math.sin(p * 0.7) * b.userData.radius * 0.7
+    );
+  });
+
+  // ─── Camera follows the pack ───
+  const avgX = runners.reduce((s, r) => s + r.group.position.x, 0) / runners.length;
+  const avgZ = runners.reduce((s, r) => s + r.group.position.z, 0) / runners.length;
+  const avgY = 1.5;
+
+  if (!isDragging) {
+    // Auto-follow: camera slowly orbits the group
+    const leader = [...runners].sort((a, b) => b.totalAngle - a.totalAngle)[0];
+    const targetCamAngle = leader.angle + Math.PI * 0.6;
+    cameraAngle += (targetCamAngle - cameraAngle) * delta * 0.8;
+  }
+
+  const cx = avgX + Math.cos(cameraAngle) * cameraDist;
+  const cz = avgZ + Math.sin(cameraAngle) * cameraDist;
+  const cy = cameraDist * cameraPitch;
+
+  camera.position.lerp(new THREE.Vector3(cx, cy, cz), delta * 3);
+  const lookTarget = new THREE.Vector3(avgX, avgY, avgZ);
+  camera.lookAt(lookTarget);
+
+  // ─── Update UI ───
+  updateUI();
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
